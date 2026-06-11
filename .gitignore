@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+
+# Database file in backend
+backend/data/db.json
+
+# OS files
+.DS_Store
+Thumbs.db

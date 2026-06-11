@@ -1,0 +1,452 @@
+<div class="h-screen w-screen flex overflow-hidden p-4 md:p-6 gap-6 relative select-none">
+  <!-- SIDEBAR -->
+  <aside class="w-80 flex-shrink-0 flex flex-col bg-zinc-950/60 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl z-10">
+    <!-- Header -->
+    <div class="p-6 border-b border-white/5 bg-gradient-to-b from-white/[0.02] to-transparent">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-white">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="font-bold text-lg leading-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">Virtusa</h2>
+          <p class="text-xs text-indigo-400 font-semibold tracking-wider uppercase">Comp-Assistant</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Session Details -->
+    <div class="flex-grow p-6 flex flex-col gap-6 overflow-y-auto">
+      <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-3">
+        <h3 class="text-xs font-semibold text-zinc-400 tracking-wider uppercase">Gateway Status</h3>
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full" [ngClass]="isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></span>
+          <span class="text-sm font-medium" [ngClass]="isConnected ? 'text-green-400' : 'text-red-400'">
+            {{ isConnected ? 'Connected to API' : 'Disconnected' }}
+          </span>
+        </div>
+        <div class="text-xs text-zinc-500 font-mono break-all" *ngIf="sessionId">
+          Session: {{ sessionId }}
+        </div>
+      </div>
+
+      <!-- Quick Action Options -->
+      <div class="flex flex-col gap-3">
+        <h3 class="text-xs font-semibold text-zinc-400 tracking-wider uppercase">Actions</h3>
+        
+        <button 
+          (click)="triggerAnalysisFlow()" 
+          class="w-full flex items-center justify-between p-4 rounded-2xl bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 hover:border-indigo-500/40 text-indigo-300 font-medium transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+        >
+          <span class="text-sm">Run Benchmark Report</span>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+          </svg>
+        </button>
+
+        <button 
+          (click)="resetSession()" 
+          class="w-full flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 text-zinc-300 font-medium transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+        >
+          <span class="text-sm">Reset Chat Session</span>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- User Authentication Details Tag -->
+    <div class="p-6 border-t border-white/5 bg-white/[0.01] flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-300 shadow-inner">
+        OK
+      </div>
+      <div>
+        <p class="text-xs font-semibold text-zinc-300">Okta Session Verified</p>
+        <p class="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Role: Compensation Lead</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CHAT FRAME -->
+  <main class="flex-grow flex flex-col bg-zinc-900/40 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl relative z-10">
+    <!-- Header -->
+    <header class="h-20 flex items-center justify-between px-8 border-b border-white/5 bg-zinc-950/20 backdrop-blur-md">
+      <div>
+        <h1 class="text-base font-semibold text-zinc-100 flex items-center gap-2">
+          <span>Compensation Intelligence Engine</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase tracking-wider">POC</span>
+        </h1>
+        <p class="text-xs text-zinc-400">WebSocket / Mastra stream orchestration gateway</p>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-zinc-500 font-medium">
+        <span>Okta Bearer Token</span>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 text-green-500">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+        </svg>
+      </div>
+    </header>
+
+    <!-- Messages Container -->
+    <div 
+      #scrollContainer 
+      class="flex-grow overflow-y-auto p-6 md:p-8 flex flex-col gap-6"
+    >
+      @if (messages.length === 0) {
+        <div class="flex-grow flex flex-col items-center justify-center text-center p-8 max-w-lg mx-auto">
+          <div class="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-6 shadow-inner animate-pulse">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-indigo-400">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-zinc-100 mb-2">Virtusa Compensation Gateway</h2>
+          <p class="text-sm text-zinc-400 mb-6">
+            This dashboard demonstrates real-time agent responses orchestrated via a WebSocket API connection to Mastra.
+          </p>
+          <button 
+            (click)="triggerAnalysisFlow()" 
+            class="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg shadow-indigo-600/20 transition-all duration-300 hover:scale-[1.03] cursor-pointer"
+          >
+            Start Compensation Analysis
+          </button>
+        </div>
+      }
+
+      @for (msg of messages; track msg.id) {
+        <div 
+          class="flex flex-col gap-2 max-w-[85%] transition-all duration-300"
+          [ngClass]="msg.role === 'user' ? 'self-end items-end' : 'self-start items-start'"
+        >
+          <!-- Message Bubble -->
+          <div 
+            class="p-4 rounded-3xl text-sm leading-relaxed shadow-lg"
+            [ngClass]="msg.role === 'user' 
+              ? 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 text-white rounded-tr-none' 
+              : 'bg-zinc-950/50 border border-white/5 text-zinc-100 rounded-tl-none backdrop-blur-sm'"
+          >
+            <!-- Agent Thought Log (Collapsible Card) -->
+            @if (msg.role === 'assistant' && msg.traces && msg.traces.length > 0) {
+              <div class="mb-3 rounded-2xl bg-indigo-950/25 border border-indigo-500/25 overflow-hidden text-xs">
+                <!-- Toggle Header -->
+                <button 
+                  (click)="toggleThoughts(msg.id); $event.preventDefault(); $event.stopPropagation()"
+                  class="w-full flex items-center justify-between p-3 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-300 font-medium transition-colors text-left cursor-pointer"
+                >
+                  <div class="flex items-center gap-2">
+                    <!-- Spinning indicator if not completed, check if completed -->
+                    @if (msg.traces[msg.traces.length - 1].completed) {
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-green-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m9 12.75 3 3 7-7M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                      </svg>
+                    } @else {
+                      <svg class="animate-spin h-4 w-4 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    }
+                    <span>Agent Steps ({{ msg.traces.length }} tools executed)</span>
+                  </div>
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" 
+                    class="w-3.5 h-3.5 transform transition-transform duration-200"
+                    [class.rotate-180]="expandedThoughts[msg.id]"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+
+                <!-- Expanded Thoughts Details -->
+                @if (expandedThoughts[msg.id]) {
+                  <div class="p-3 border-t border-indigo-500/20 flex flex-col gap-2.5 max-h-56 overflow-y-auto font-mono text-[10px] text-zinc-400 bg-zinc-950/40 select-text">
+                    @for (trace of msg.traces; track trace.toolCallId) {
+                      <div class="border-b border-white/[0.03] pb-2 last:border-0 last:pb-0">
+                        <div class="flex items-center justify-between text-zinc-300 font-semibold mb-1">
+                          <span class="text-purple-400">🔧 {{ trace.toolName }}</span>
+                          <span class="text-[9px]" [ngClass]="trace.completed ? 'text-green-500' : 'text-yellow-500 animate-pulse'">
+                            {{ trace.completed ? 'COMPLETED' : 'EXECUTING...' }}
+                          </span>
+                        </div>
+                        <div class="pl-3 border-l border-indigo-500/20 flex flex-col gap-1">
+                          <!-- Show Args -->
+                          <div *ngIf="trace.payload.args || trace.payload.argsTextDelta">
+                            <span class="text-[9px] text-zinc-500">Args:</span>
+                            <pre class="bg-black/30 p-1.5 rounded text-[9px] overflow-x-auto whitespace-pre-wrap">{{ trace.payload.args ? (trace.payload.args | json) : trace.payload.argsTextDelta }}</pre>
+                          </div>
+                          <!-- Show Output -->
+                          <div *ngIf="trace.payload.output">
+                            <span class="text-[9px] text-zinc-500">Output:</span>
+                            <pre class="bg-indigo-950/20 p-1.5 rounded text-[9px] text-zinc-300 overflow-x-auto whitespace-pre-wrap">{{ trace.payload.output | json }}</pre>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Render normal text with support for simple formatting -->
+            <p class="whitespace-pre-wrap select-text" *ngIf="msg.content">{{ msg.content }}</p>
+
+            <!-- Render nested components if present -->
+            @if (msg.components && msg.components.length > 0) {
+              @for (comp of msg.components; track $index) {
+                @if (comp.type === 'analysis') {
+                  <div class="mt-4 p-5 rounded-2xl bg-zinc-900/80 border border-white/5 flex flex-col gap-5 select-text">
+                    <!-- Title -->
+                    <div class="flex items-center justify-between pb-3 border-b border-white/5">
+                      <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-purple-500 shadow shadow-purple-500/50 animate-pulse"></span>
+                        <h4 class="font-bold text-sm text-purple-400 uppercase tracking-wide">Databricks Analytics Dashboard</h4>
+                      </div>
+                      <span class="text-[10px] font-mono text-zinc-500">REF: {{ comp.payload.id }}</span>
+                    </div>
+
+                    <!-- Summary -->
+                    <p class="text-xs text-zinc-300 leading-relaxed font-light italic">
+                      "{{ comp.payload.summary }}"
+                    </p>
+
+                    <!-- Chart Widget -->
+                    <div class="flex flex-col gap-3">
+                      <h5 class="text-xs font-semibold text-zinc-400">Salary Benchmark Range by Role Level</h5>
+                      <div class="flex flex-col gap-4 mt-2">
+                        @for (chart of comp.payload.charts; track chart.label) {
+                          <div class="flex flex-col gap-1">
+                            <div class="flex justify-between text-[11px] font-medium">
+                              <span class="text-zinc-300">{{ chart.label }}</span>
+                              <span class="text-indigo-400">Avg: {{ formatSalary(chart.average) }}</span>
+                            </div>
+                            <!-- Styled custom horizontal double slider bars -->
+                            <div class="relative w-full h-5 bg-white/[0.02] border border-white/5 rounded-full overflow-hidden">
+                              <!-- Background span representing the range between min and max -->
+                              <div 
+                                class="absolute top-0 bottom-0 bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-pink-500/30 border-x border-indigo-400/50 rounded-full"
+                                [style.left.%]="20 + ($index * 8)"
+                                [style.right.%]="15 + ($index * 5)"
+                              ></div>
+                              <!-- Indicator for the average salary -->
+                              <div 
+                                class="absolute top-0 bottom-0 w-1 bg-white shadow-lg shadow-white/80"
+                                [style.left.%]="45 + ($index * 4)"
+                              ></div>
+                              <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500">{{ formatSalary(chart.min) }}</span>
+                              <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500">{{ formatSalary(chart.max) }}</span>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- Table Widget -->
+                    <div class="overflow-x-auto border border-white/5 rounded-xl bg-white/[0.01]">
+                      <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr class="border-b border-white/5 bg-white/[0.02] text-zinc-400 font-medium">
+                            <th class="p-3">Role</th>
+                            <th class="p-3">Seniority</th>
+                            <th class="p-3 text-right">Base Salary Range (USD)</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/[0.03]">
+                          @for (row of comp.payload.table; track $index) {
+                            <tr class="hover:bg-white/[0.02] text-zinc-300 transition-colors">
+                              <td class="p-3 font-medium">{{ row.role }}</td>
+                              <td class="p-3 text-zinc-400">{{ row.level }}</td>
+                              <td class="p-3 text-right font-mono text-indigo-300">
+                                {{ formatSalary(row.salaryMin) }} - {{ formatSalary(row.salaryMax) }}
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                }
+              }
+            }
+          </div>
+          <!-- Time stamp -->
+          <span class="text-[10px] text-zinc-500 px-2 font-light">
+            {{ msg.timestamp | date:'shortTime' }}
+          </span>
+        </div>
+      }
+    </div>
+
+    <!-- ACTIVE DYNAMIC INPUT PANEL -->
+    @if (activeInput) {
+      <div class="px-8 py-6 border-t border-white/5 bg-zinc-950/40 backdrop-blur-lg flex flex-col gap-4 animate-fade-in relative z-20">
+        <h4 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 21l8.982-11.795H13.68l.813-5.07L5.5 16h6.128v-.096Z" />
+          </svg>
+          <span>Required Selection</span>
+        </h4>
+
+        <!-- CHIPS INPUT -->
+        @if (activeInput.type === 'chips') {
+          <div class="flex flex-col gap-2">
+            <p class="text-sm text-zinc-300">{{ activeInput.payload.message }}</p>
+            <div class="flex flex-wrap gap-2 mt-1">
+              @for (opt of activeInput.payload.options; track opt) {
+                <button 
+                  (click)="selectChip(opt)"
+                  class="px-4 py-2.5 rounded-2xl bg-zinc-900 border border-white/5 hover:border-indigo-500/50 hover:bg-indigo-600/10 text-sm text-zinc-300 hover:text-indigo-300 transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                >
+                  {{ opt }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- SEARCH INPUT -->
+        @if (activeInput.type === 'search') {
+          <div class="flex flex-col gap-3">
+            <p class="text-sm text-zinc-300">{{ activeInput.payload.message }}</p>
+            <div class="relative max-w-md">
+              <input 
+                type="text" 
+                [(ngModel)]="searchFilterText"
+                [placeholder]="activeInput.payload.placeholder || 'Type to filter options...'"
+                class="w-full px-4 py-3 bg-zinc-900/60 border border-white/5 focus:border-indigo-500 rounded-2xl text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-colors"
+              />
+              <!-- Options list -->
+              <div class="mt-2 border border-white/5 rounded-2xl bg-zinc-900/95 overflow-hidden max-h-40 overflow-y-auto shadow-2xl">
+                @for (opt of getFilteredSearchOptions(); track opt) {
+                  <button 
+                    (click)="selectSearchOption(opt)"
+                    class="w-full text-left px-4 py-2.5 text-xs text-zinc-300 hover:bg-indigo-600/20 hover:text-indigo-300 transition-colors border-b border-white/[0.02] last:border-b-0 cursor-pointer"
+                  >
+                    {{ opt }}
+                  </button>
+                } @empty {
+                  <div class="p-3 text-xs text-zinc-500 text-center">No options match filter</div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- CHECKBOX MULTI-SELECT -->
+        @if (activeInput.type === 'checkbox') {
+          <div class="flex flex-col gap-3">
+            <p class="text-sm text-zinc-300">{{ activeInput.payload.message }}</p>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 max-w-2xl">
+              @for (opt of activeInput.payload.options; track opt.value) {
+                <div 
+                  (click)="toggleCheckbox(opt.value)"
+                  class="flex items-center gap-3 p-3 rounded-2xl bg-zinc-900/60 border border-white/5 hover:border-indigo-500/30 transition-all cursor-pointer"
+                  [ngClass]="checkboxSelections[opt.value] ? 'border-indigo-500/40 bg-indigo-500/5' : ''"
+                >
+                  <div 
+                    class="w-5 h-5 rounded-lg border flex items-center justify-center transition-colors"
+                    [ngClass]="checkboxSelections[opt.value] ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-white/10 bg-zinc-950'"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5" *ngIf="checkboxSelections[opt.value]">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  </div>
+                  <span class="text-xs text-zinc-300 font-medium">{{ opt.label }}</span>
+                </div>
+              }
+            </div>
+            <button 
+              (click)="submitCheckboxSelection()"
+              class="self-start mt-2 px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-lg shadow-indigo-600/20 transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+            >
+              Confirm Role Selections
+            </button>
+          </div>
+        }
+
+        <!-- RANGE SELECTOR -->
+        @if (activeInput.type === 'range-selector') {
+          <div class="flex flex-col gap-4">
+            <p class="text-sm text-zinc-300">{{ activeInput.payload.message }}</p>
+            
+            <div class="flex items-center gap-4 max-w-xl">
+              <div class="flex flex-col gap-1 flex-1">
+                <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Minimum Salary (USD)</span>
+                <input 
+                  type="number" 
+                  [(ngModel)]="rangeMin" 
+                  [min]="activeInput.payload.min"
+                  [max]="rangeMax"
+                  [step]="activeInput.payload.step"
+                  class="px-4 py-2.5 bg-zinc-900 border border-white/5 focus:border-indigo-500 rounded-xl text-xs text-zinc-200 outline-none"
+                />
+              </div>
+              <div class="flex flex-col gap-1 flex-1">
+                <span class="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Maximum Salary (USD)</span>
+                <input 
+                  type="number" 
+                  [(ngModel)]="rangeMax" 
+                  [min]="rangeMin"
+                  [max]="activeInput.payload.max"
+                  [step]="activeInput.payload.step"
+                  class="px-4 py-2.5 bg-zinc-900 border border-white/5 focus:border-indigo-500 rounded-xl text-xs text-zinc-200 outline-none"
+                />
+              </div>
+            </div>
+
+            <!-- Double Range Slider Simulation -->
+            <div class="flex flex-col gap-1 max-w-xl mt-1">
+              <input 
+                type="range" 
+                [(ngModel)]="rangeMax" 
+                [min]="activeInput.payload.min" 
+                [max]="activeInput.payload.max"
+                [step]="activeInput.payload.step"
+                class="w-full accent-indigo-500 bg-white/5 h-1.5 rounded-lg appearance-none cursor-pointer"
+              />
+              <div class="flex justify-between text-[10px] text-zinc-500 font-mono mt-1">
+                <span>Min Bound: {{ formatSalary(activeInput.payload.min) }}</span>
+                <span>Max Bound: {{ formatSalary(activeInput.payload.max) }}</span>
+              </div>
+            </div>
+
+            <button 
+              (click)="submitRangeSelection()"
+              class="self-start mt-1 px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-lg shadow-indigo-600/20 transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+            >
+              Apply Base Salary Range
+            </button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- STANDARD MESSAGE FOOTER (Hide when active input is expected, to force correct UX) -->
+    <footer 
+      class="p-6 md:p-8 border-t border-white/5 bg-zinc-950/20 backdrop-blur-md relative z-20"
+      [ngClass]="activeInput ? 'opacity-30 pointer-events-none' : ''"
+    >
+      <form 
+        (submit)="sendTextMessage(); $event.preventDefault()" 
+        class="flex gap-4 items-center"
+      >
+        <input 
+          type="text" 
+          [(ngModel)]="userMessageText" 
+          name="messageText"
+          [disabled]="!!activeInput"
+          [placeholder]="activeInput ? 'Please complete selection above to proceed...' : 'Ask about compensation, base salary review, or request report...'"
+          class="flex-grow px-5 py-4 bg-zinc-900/60 hover:bg-zinc-900/80 border border-white/5 focus:border-indigo-500/80 rounded-2xl text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-all"
+        />
+        <button 
+          type="submit" 
+          [disabled]="!userMessageText.trim() || !!activeInput"
+          class="h-12 w-12 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/20 transition-all duration-300 disabled:opacity-50 disabled:scale-100 hover:scale-[1.05] cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+          </svg>
+        </button>
+      </form>
+    </footer>
+  </main>
+</div>
