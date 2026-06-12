@@ -28,6 +28,66 @@ app.get('/api/v1/analysis/:id', (req, res) => {
   res.json(data);
 });
 
+// REST Endpoints for UI Components
+app.get('/api/v1/jobs', (req, res) => {
+  const query = (req.query.q as string || '').toLowerCase();
+  const allJobs = [
+    { title: 'Application Development & Maintenance', type: 'Specialization' },
+    { title: 'Development Engineering - Sp 1', type: 'Specialization' },
+    { title: 'Development Engineering - Sp 2', type: 'Specialization' },
+    { title: 'IT Software Development & Operations (DevOps)', type: 'Specialization' },
+    { title: 'Research & Development', type: 'Sub Family' }
+  ];
+  const filtered = query ? allJobs.filter(j => j.title.toLowerCase().includes(query)) : allJobs;
+  res.json(filtered);
+});
+
+app.get('/api/v1/locations', (req, res) => {
+  const query = (req.query.q as string || '').toLowerCase();
+  const allLocations = [
+    { city: 'Boston', state: 'MA' },
+    { city: 'New York', state: 'NY' },
+    { city: 'San Francisco', state: 'CA' },
+    { city: 'Austin', state: 'TX' },
+    { city: 'Seattle', state: 'WA' }
+  ];
+  const filtered = query ? allLocations.filter(l => l.city.toLowerCase().includes(query)) : allLocations;
+  res.json(filtered);
+});
+
+app.get('/api/v1/sectors', (req, res) => {
+  res.json({
+    superSector: [
+      'Banking & Financial Services', 'Chemicals', 'Consumer Goods', 
+      'Energy', 'Health Care Services', 'Life Sciences', 'Logistics', 
+      'Mining & Metals', 'Other Manufacturing', 'Other Non-Manufacturing', 
+      'Retail & Wholesale', 'Service (Non-Financial)', 'Transportation Equipment'
+    ],
+    subSector: ['Software', 'Hardware', 'Networking'],
+    otherSector: ['Non-Profit', 'Government']
+  });
+});
+
+app.get('/api/v1/export/:id', (req, res) => {
+  const dataId = req.params.id;
+  const data = db.getAnalysisData(dataId);
+  if (!data) {
+    res.status(404).json({ error: 'Analysis data not found' });
+    return;
+  }
+  
+  // Generate CSV
+  let csv = 'Role,Seniority,Base Salary Min,Base Salary Max\n';
+  data.table.forEach(row => {
+    // Quote strings to prevent commas from breaking columns
+    csv += `"${row.role}","${row.level}",${row.salaryMin},${row.salaryMax}\n`;
+  });
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename=analysis_${dataId}.csv`);
+  res.send(csv);
+});
+
 // Create HTTP server to share with WebSocket
 const server = http.createServer(app);
 

@@ -2,6 +2,7 @@ import { Component, OnInit, ElementRef, ViewChild, AfterViewChecked } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChatService, ChatMessage } from '../../services/chat.service';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-chat',
@@ -27,10 +28,17 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   public rangeMin = 80000;
   public rangeMax = 250000;
 
+  // Component specific states
+  public jobOptions: any[] = [];
+  public locationOptions: any[] = [];
+  public sectorData: any = { superSector: [], subSector: [], otherSector: [] };
+  public activeSectorTab: 'superSector' | 'subSector' | 'otherSector' = 'superSector';
+  public locationQuery: string = '';
+
   // Thought logs expansion state
   public expandedThoughts: Record<string, boolean> = {};
 
-  constructor(private chatService: ChatService) {}
+  constructor(public chatService: ChatService, private http: HttpClient) {}
 
   public toggleThoughts(msgId: string): void {
     this.expandedThoughts[msgId] = !this.expandedThoughts[msgId];
@@ -56,16 +64,22 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       this.activeInput = input;
       // Initialize states when input panel changes
       if (input) {
-        if (input.type === 'range-selector') {
-          this.rangeMin = input.payload.defaultMin || input.payload.min;
-          this.rangeMax = input.payload.defaultMax || input.payload.max;
-        } else if (input.type === 'checkbox') {
-          this.checkboxSelections = {};
-          input.payload.options.forEach((opt: any) => {
-            this.checkboxSelections[opt.value] = false;
+        if (input.type === 'select-pc-range') {
+          this.rangeMin = input.payload?.min || 50;
+          this.rangeMax = input.payload?.max || 60;
+        } else if (input.type === 'search-job') {
+          this.http.get<any[]>('http://localhost:3000/api/v1/jobs').subscribe(data => this.jobOptions = data);
+        } else if (input.type === 'search-location') {
+          this.locationQuery = '';
+          this.http.get<any[]>('http://localhost:3000/api/v1/locations').subscribe(data => this.locationOptions = data);
+        } else if (input.type === 'select-industry') {
+          this.http.get<any>('http://localhost:3000/api/v1/sectors').subscribe(data => {
+            this.sectorData = data;
+            this.activeSectorTab = 'superSector';
+            this.checkboxSelections = {};
+            // Init all to false
+            Object.values(data).flat().forEach((val: any) => this.checkboxSelections[val] = false);
           });
-        } else if (input.type === 'search') {
-          this.searchFilterText = '';
         }
       }
     });
@@ -107,44 +121,40 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   }
 
   // Filtered search options
-  public getFilteredSearchOptions(): any[] {
-    if (!this.activeInput || this.activeInput.type !== 'search') return [];
-    const query = this.searchFilterText.toLowerCase();
-    return this.activeInput.payload.options.filter((opt: string) => 
-      opt.toLowerCase().includes(query)
-    );
+  public filterLocations(): void {
+    const q = this.locationQuery.toLowerCase();
+    this.http.get<any[]>(`http://localhost:3000/api/v1/locations?q=${q}`).subscribe(data => this.locationOptions = data);
   }
 
-  public selectSearchOption(option: string): void {
-    this.chatService.submitInputResponse('search', option, `Selected search filter: ${option}`);
+  public filterJobs(event: any): void {
+    const q = event.target.value.toLowerCase();
+    this.http.get<any[]>(`http://localhost:3000/api/v1/jobs?q=${q}`).subscribe(data => this.jobOptions = data);
   }
 
   public toggleCheckbox(value: string): void {
     this.checkboxSelections[value] = !this.checkboxSelections[value];
   }
 
-  public submitCheckboxSelection(): void {
-    const selectedValues = Object.keys(this.checkboxSelections).filter(
-      key => this.checkboxSelections[key]
-    );
-
+  public submitIndustrySelection(): void {
+    const selectedValues = Object.keys(this.checkboxSelections).filter(key => this.checkboxSelections[key]);
     if (selectedValues.length === 0) return;
-
-    const labels = this.activeInput.payload.options
-      .filter((opt: any) => selectedValues.includes(opt.value))
-      .map((opt: any) => opt.label)
-      .join(', ');
-
-    this.chatService.submitInputResponse('checkbox', selectedValues, `Selected roles: ${labels}`);
+    this.chatService.sendMessage(selectedValues.join(', '));
   }
 
-  public submitRangeSelection(): void {
-    const value = { min: this.rangeMin, max: this.rangeMax };
-    this.chatService.submitInputResponse(
-      'range-selector', 
-      value, 
-      `Salary limit set: $${this.rangeMin.toLocaleString()} - $${this.rangeMax.toLocaleString()} USD`
-    );
+  public submitJobSelection(jobTitle: string): void {
+    this.chatService.sendMessage(jobTitle);
+  }
+
+  public submitLocationSelection(city: string): void {
+    this.chatService.sendMessage(city);
+  }
+
+  public submitPcRangeSelection(): void {
+    this.chatService.sendMessage(`${this.rangeMin} - ${this.rangeMax}`);
+  }
+
+  public exportData(analysisId: string): void {
+    window.open(`http://localhost:3000/api/v1/export/${analysisId}`, '_blank');
   }
 
   public resetSession(): void {

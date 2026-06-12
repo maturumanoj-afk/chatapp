@@ -59,9 +59,7 @@ async function streamMockToolTrace(
   await delay(200);
 }
 
-// Simulated Agent Logic based on prompt history
 async function handleMockAgentStream(message: string, conversationId: string, threadId: string | undefined, res: express.Response) {
-  // Mock sending metadata back to API
   const actualThreadId = threadId || `tr_${Math.random().toString(36).substr(2, 9)}`;
   writeSSE(res, 'metadata', {
     threadId: actualThreadId,
@@ -71,14 +69,9 @@ async function handleMockAgentStream(message: string, conversationId: string, th
 
   const session = db.getSession(conversationId);
   const history = session ? session.messages : [];
-
-  // Normalize message
   const msg = message.toLowerCase().trim();
-
-  // Helper to wait
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Determine stage by scanning the history backwards for the last assistant prompt
   let lastAssistantMsg = '';
   for (let i = history.length - 1; i >= 0; i--) {
     if (history[i].role === 'assistant') {
@@ -87,127 +80,89 @@ async function handleMockAgentStream(message: string, conversationId: string, th
     }
   }
 
-  // 1. Trigger Command ALWAYS starts Stage 1
-  if (msg.includes('compensation') || msg.includes('analysis') || msg.includes('review') || msg.includes('start')) {
-    // Stream Trace: Workflows loading
-    await streamMockToolTrace(res, 'agent-workflowSelection', { action: 'list_workflows' }, { status: 'success', options: ['marketpricing', 'benchmarking'] });
-
-    // Stage 1: Ask for levels (Chips)
-    const text = "I can help you analyze employee compensation models. Let's start by selecting the organizational levels to include in this review:";
-    for (const word of text.split(' ')) {
-      writeSSE(res, 'text-delta', { text: word + ' ' });
-      await delay(40);
-    }
-    await delay(200);
-
+  // 1. Initial Prompt
+  if (msg.includes('market pricing analysis') || msg.includes('new analysis')) {
+    const text = "Understood. Now accessing TRS 2024 data for Acme Corp. Please enter a job specialization in the job finder below.";
+    for (const word of text.split(' ')) { writeSSE(res, 'text-delta', { text: word + ' ' }); await delay(20); }
+    
+    writeSSE(res, 'component', {
+      componentType: 'search-job'
+    });
+    writeSSE(res, 'finish', { status: 'success', reason: 'stop' });
+  }
+  // 2. Job Selected -> Ask Refinements
+  else if (lastAssistantMsg.includes('job specialization')) {
+    const text = "Before I do the analysis, would you like to apply any refinements?";
+    for (const word of text.split(' ')) { writeSSE(res, 'text-delta', { text: word + ' ' }); await delay(20); }
+    
     writeSSE(res, 'component', {
       componentType: 'chips',
-      data: {
-        message: 'Choose one of the levels below to proceed:',
-        options: ['L1: Associate', 'L2: Mid-Level', 'L3: Senior', 'L4: Staff', 'L5: Principal', 'All Levels'],
-      }
+      data: { options: ['Industry : Super Sector', 'Location', 'Revenue', 'Position Class', 'All Data'] }
     });
     writeSSE(res, 'finish', { status: 'success', reason: 'stop' });
   }
-  // 2. If the last question was about organizational levels -> Ask for Job Roles (Stage 2)
-  else if (lastAssistantMsg.includes('organizational levels')) {
-    // Stream Trace: Query Metadata Job Architecture
-    await streamMockToolTrace(
-      res, 
-      'agent-mongodbQueryTool', 
-      { datasource: 'mongodb:survey-metadata.jobarchitecture', filters: ['spec_title'], level: message }, 
-      { status: 'success', specializations_found: 5, schema: 'survey-metadata' }
-    );
-
-    // Stage 2: Ask for Job Roles (Checkbox)
-    const text = "Levels recorded. Now, select the specific Engineering job roles you'd like to analyze in this compensation review:";
-    for (const word of text.split(' ')) {
-      writeSSE(res, 'text-delta', { text: word + ' ' });
-      await delay(40);
-    }
-    await delay(200);
-
+  // 3. User selects "Industry : Super Sector"
+  else if (msg.includes('industry')) {
+    const text = "Understood! What refinement would you like to do under Industries? Select the Industry from the list below";
+    for (const word of text.split(' ')) { writeSSE(res, 'text-delta', { text: word + ' ' }); await delay(20); }
+    
     writeSSE(res, 'component', {
-      componentType: 'checkbox',
-      data: {
-        message: 'Select engineering roles:',
-        options: [
-          { label: 'Frontend Engineer', value: 'frontend' },
-          { label: 'Backend Engineer', value: 'backend' },
-          { label: 'Fullstack Engineer', value: 'fullstack' },
-          { label: 'Data Engineer', value: 'data' },
-          { label: 'DevOps Engineer', value: 'devops' },
-        ],
-      }
+      componentType: 'select-industry'
     });
     writeSSE(res, 'finish', { status: 'success', reason: 'stop' });
   }
-  // 3. If the last question was about job roles -> Ask for Salary Range (Stage 3)
-  else if (lastAssistantMsg.includes('job roles')) {
-    // Stream Trace: Survey Metadata Filter roles
-    await streamMockToolTrace(
-      res, 
-      'agent-surveyMetadataFilter', 
-      { selected_roles: message }, 
-      { status: 'success', records_matched: 240 }
-    );
-
-    // Stage 3: Ask for Salary Range (Range-Selector)
-    const text = "Roles registered. To filter the benchmark datasets, please define the base salary range (annual USD) you want to include in the visual report:";
-    for (const word of text.split(' ')) {
-      writeSSE(res, 'text-delta', { text: word + ' ' });
-      await delay(40);
-    }
-    await delay(200);
-
+  // 4. Industry selected -> Ask Refinements again
+  else if (lastAssistantMsg.includes('select the industry from the list below')) {
+    const text = "Got it! Added refinement for Industry. Would you like to add more refinement?";
+    for (const word of text.split(' ')) { writeSSE(res, 'text-delta', { text: word + ' ' }); await delay(20); }
+    
     writeSSE(res, 'component', {
-      componentType: 'range-selector',
-      data: {
-        message: 'Select annual base salary bounds (USD):',
-        min: 50000,
-        max: 400000,
-        step: 5000,
-        defaultMin: 90000,
-        defaultMax: 250000,
-      }
+      componentType: 'chips',
+      data: { options: ['Industry : Super Sector', 'Location', 'Revenue', 'Position Class', 'No, Proceed with current selection'] }
     });
     writeSSE(res, 'finish', { status: 'success', reason: 'stop' });
   }
-  // 4. If the last question was about salary range -> Trigger Databricks Analysis Job (Stage 4)
-  else if (lastAssistantMsg.includes('base salary range')) {
-    // Stream Trace: Databricks benchmarking tool trigger
-    await streamMockToolTrace(
-      res, 
-      'agent-benchmarkingAgent', 
-      { prompt: 'crunch_compensation_benchmarks', threadId: conversationId, salary_bounds: message }, 
-      { status: 'success', job_triggered: true, target: 'databricks_spark' }
-    );
+  // 5. User selects "Location"
+  else if (msg.includes('location')) {
+    const text = "Understood! Enter a city in the city search below";
+    for (const word of text.split(' ')) { writeSSE(res, 'text-delta', { text: word + ' ' }); await delay(20); }
+    
+    writeSSE(res, 'component', {
+      componentType: 'search-location'
+    });
+    writeSSE(res, 'finish', { status: 'success', reason: 'stop' });
+  }
+  // 6. Location selected -> Ask Refinements again
+  else if (lastAssistantMsg.includes('enter a city')) {
+    const text = "Got it! Added refinement for location only for Boston. Would you like to add more refinement?";
+    for (const word of text.split(' ')) { writeSSE(res, 'text-delta', { text: word + ' ' }); await delay(20); }
+    
+    writeSSE(res, 'component', {
+      componentType: 'chips',
+      data: { options: ['Industry : Super Sector', 'Location', 'Revenue', 'Position Class', 'No, Proceed with current selection'] }
+    });
+    writeSSE(res, 'finish', { status: 'success', reason: 'stop' });
+  }
+  // 7. User selects "Position Class"
+  else if (msg.includes('position class')) {
+    const text = "Understood! Please provide the position class range.";
+    for (const word of text.split(' ')) { writeSSE(res, 'text-delta', { text: word + ' ' }); await delay(20); }
+    
+    writeSSE(res, 'component', {
+      componentType: 'select-pc-range',
+      data: { min: 50, max: 60 }
+    });
+    writeSSE(res, 'finish', { status: 'success', reason: 'stop' });
+  }
+  // 8. PC Range selected -> Run Analysis
+  else if (lastAssistantMsg.includes('position class range')) {
+    const text = "Got it! Working on the analysis for Acme Corp with 2025 Bulgaria TRS and refining with revenue with over $500M. Kindly wait\n\nHere's the detailed information for your Analysis";
+    for (const word of text.split(' ')) { writeSSE(res, 'text-delta', { text: word + ' ' }); await delay(20); }
 
-    // Stage 4: Trigger Databricks Analysis Job (Analysis-status)
-    const text1 = "Excellent bounds specified. Triggering the Databricks spark job to crunch compensation benchmarks and equity allocations...";
-    for (const word of text1.split(' ')) {
-      writeSSE(res, 'text-delta', { text: word + ' ' });
-      await delay(30);
-    }
-    await delay(500);
-
-    const text2 = "\nAnalyzing salary records, calculating 25th/50th/75th percentiles, and auditing pay parity metrics...";
-    for (const word of text2.split(' ')) {
-      writeSSE(res, 'text-delta', { text: word + ' ' });
-      await delay(30);
-    }
-    await delay(300);
-
-    // Create a pending job
     const job = db.createAnalysisJob(conversationId);
-    writeSSE(res, 'text-delta', { text: `\n\nJob ID ${job.id} registered. Streaming execution status...` });
-
-    // Wait a moment before notifying completion
     setTimeout(() => {
-      // Complete job
       db.updateAnalysisJob(job.id, 'completed', 'mock-compensation-data');
-      console.log(`Analysis job ${job.id} completed. Emitting status to UI.`);
-    }, 2500);
+    }, 2000);
 
     writeSSE(res, 'analysis-status', {
       status: 'pending',
@@ -215,18 +170,14 @@ async function handleMockAgentStream(message: string, conversationId: string, th
     });
     writeSSE(res, 'finish', { status: 'success', reason: 'stop' });
   }
-  // 5. Default chat fallback
+  // Default start
   else {
-    const text = `Hi there! I am the Virtusa Compensation Assistant. 
-
-I can run deep analytical reviews on base salaries, equity benchmarks, and organizational level models. 
-
-Try typing **"run compensation analysis"** or **"start review"** to see the custom UI panels and Databricks report integration!`;
-    
-    for (const chunk of text.split('\n')) {
-      writeSSE(res, 'text-delta', { text: chunk + '\n' });
-      await delay(100);
-    }
+    const text = "Sure, Lets begin with the new analysis. What would you like to do?";
+    for (const word of text.split(' ')) { writeSSE(res, 'text-delta', { text: word + ' ' }); await delay(20); }
+    writeSSE(res, 'component', {
+      componentType: 'chips',
+      data: { options: ['Market Pricing Analysis', 'Benchmarking'] }
+    });
     writeSSE(res, 'finish', { status: 'success', reason: 'stop' });
   }
 }

@@ -110,6 +110,10 @@ export class ChatService {
         case 'search':
         case 'checkbox':
         case 'range-selector':
+        case 'search-job':
+        case 'search-location':
+        case 'select-industry':
+        case 'select-pc-range':
           // Set active input options for user input footer
           this.activeInputSubject.next({
             type: frame.type,
