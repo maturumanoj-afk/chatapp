@@ -194,30 +194,88 @@
           @if (activeInput.type === 'search-job') {
             <div class="w-full bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col w-[600px] max-w-full">
               <!-- Header -->
-              <div class="p-4 border-b border-slate-200 flex justify-between items-start">
+              <div class="p-4 border-b border-slate-200 flex justify-between items-start bg-slate-50">
                 <div>
-                  <h3 class="font-bold text-base text-slate-800">Search Job Specialization</h3>
-                  <p class="text-xs text-slate-500 mt-0.5">Found {{ jobOptions.length }} records</p>
+                  @if (jobSearchMode === 'categories') {
+                    <h3 class="font-bold text-base text-slate-800">Select a Job</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Select from the below category</p>
+                  } @else {
+                    <h3 class="font-bold text-base text-slate-800">Search {{ activeCategory ? activeCategory.name : 'Job Specialization' }}</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                      @if (!searchFilterText && activeCategory) {
+                        Showing {{ jobTotalRecords }} top records
+                      } @else {
+                        Found {{ jobTotalRecords }} records for "{{ searchFilterText }}"
+                      }
+                    </p>
+                  }
                 </div>
                 <div class="px-2 py-1 bg-blue-50 border border-blue-200 rounded text-[9px] font-semibold text-blue-800 text-center uppercase tracking-wide leading-tight">
                   For Business Review Only<br><span class="font-normal text-blue-600">Click "Tab" or "E" on Keyboard</span>
                 </div>
               </div>
-              <!-- List -->
-              <div class="max-h-60 overflow-y-auto">
-                @for (job of jobOptions; track job.title) {
-                  <div class="px-4 py-2 border-b border-slate-100 flex justify-between items-center hover:bg-slate-50 cursor-pointer" (click)="submitJobSelection(job.title)">
-                    <div class="flex items-center gap-2">
-                      <div class="w-0.5 h-4 bg-blue-300 rounded"></div>
-                      <span class="text-sm font-medium text-slate-700">{{ job.title }}</span>
+              
+              <!-- Search Bar -->
+              <div class="p-3 bg-white border-b border-slate-100">
+                <div class="relative">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                  </svg>
+                  <input type="text" [(ngModel)]="searchFilterText" placeholder="Search" (keyup)="filterJobs($event)" class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded text-sm text-slate-800 focus:outline-none focus:border-[#051c4a]" />
+                </div>
+              </div>
+
+              <!-- List Area -->
+              <div class="max-h-[300px] overflow-y-auto bg-white">
+                
+                <!-- State 1: Categories -->
+                @if (jobSearchMode === 'categories') {
+                  @for (cat of jobCategories; track cat.name) {
+                    <div (click)="selectCategory(cat)" class="px-4 py-3 border-b border-slate-100 flex justify-between items-center hover:bg-slate-50 cursor-pointer group">
+                      <span class="text-sm font-medium text-slate-700 group-hover:text-[#051c4a]">{{ cat.name }}</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-slate-400 group-hover:text-[#051c4a] transition-transform duration-200">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                      </svg>
                     </div>
-                    <span class="text-[10px] font-semibold text-blue-600">{{ job.type }}</span>
-                  </div>
+                  }
+                }
+                
+                <!-- State 2: Search Results -->
+                @if (jobSearchMode === 'search') {
+                  @for (job of jobSearchResults; track job.title) {
+                    <label class="px-4 py-3 border-b border-slate-100 flex items-center gap-3 hover:bg-slate-50 cursor-pointer">
+                      <input type="radio" name="jobSelection" [value]="job.title" [(ngModel)]="selectedJobTitle" class="w-4 h-4 text-[#051c4a] border-slate-300 focus:ring-[#051c4a]">
+                      <span class="text-sm font-medium text-slate-700 flex-grow">{{ job.title }}</span>
+                    </label>
+                  }
+                  @if (jobSearchResults.length === 0) {
+                    <div class="p-6 text-center text-sm text-slate-500">
+                      No matching records found.
+                    </div>
+                  }
                 }
               </div>
-              <!-- Footer Search -->
-              <div class="p-3 bg-white">
-                <input type="text" placeholder="Dev" (keyup)="filterJobs($event)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm text-slate-800 focus:outline-none focus:border-[#051c4a]" />
+
+              <!-- Footer Buttons -->
+              <div class="p-3 bg-white border-t border-slate-200 flex justify-between items-center">
+                @if (jobSearchMode === 'search') {
+                  <button (click)="goBackToCategories()" class="px-4 py-1.5 text-sm font-semibold text-slate-600 border border-slate-300 rounded hover:bg-slate-50 flex items-center gap-1 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                    </svg>
+                    Back
+                  </button>
+                } @else {
+                  <div></div>
+                }
+                
+                <button 
+                  (click)="submitJobSelection()" 
+                  [disabled]="jobSearchMode === 'categories' || !selectedJobTitle"
+                  class="px-6 py-1.5 bg-[#051c4a] text-white rounded text-sm font-semibold shadow-sm hover:bg-[#0a2860] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Submit
+                </button>
               </div>
             </div>
           }

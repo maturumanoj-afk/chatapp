@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChatService, ChatMessage } from '../../services/chat.service';
 import { HttpClient } from '@angular/common/http';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
   selector: 'app-chat',
@@ -29,7 +31,14 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   public rangeMax = 250000;
 
   // Component specific states
-  public jobOptions: any[] = [];
+  public jobSearchMode: 'categories' | 'search' = 'categories';
+  public jobCategories: any[] = [];
+  public jobSearchResults: any[] = [];
+  public jobTotalRecords: number = 0;
+  public selectedJobTitle: string = '';
+  public activeCategory: any | null = null;
+  private searchSubject = new Subject<string>();
+  
   public locationOptions: any[] = [];
   public sectorData: any = { superSector: [], subSector: [], otherSector: [] };
   public activeSectorTab: 'superSector' | 'subSector' | 'otherSector' = 'superSector';
@@ -51,6 +60,13 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       storedSession = null;
     }
     
+    this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(query => {
+      this.executeJobSearch(query);
+    });
+
     // Connect to WebSocket
     this.chatService.connect(storedSession || undefined);
 
@@ -68,7 +84,12 @@ export class ChatComponent implements OnInit, AfterViewChecked {
           this.rangeMin = input.payload?.min || 50;
           this.rangeMax = input.payload?.max || 60;
         } else if (input.type === 'search-job') {
-          this.http.get<any[]>('http://localhost:3000/api/v1/jobs').subscribe(data => this.jobOptions = data);
+          this.jobSearchMode = 'categories';
+          this.searchFilterText = '';
+          const surveyCode = this.chatService.surveyCode;
+          this.http.get<any>(`http://localhost:3000/api/v1/jobs/hierarchy?surveyCode=${surveyCode}`).subscribe(data => {
+            this.jobCategories = data.categories;
+          });
         } else if (input.type === 'search-location') {
           this.locationQuery = '';
           this.http.get<any[]>('http://localhost:3000/api/v1/locations').subscribe(data => this.locationOptions = data);
@@ -127,8 +148,29 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   }
 
   public filterJobs(event: any): void {
-    const q = event.target.value.toLowerCase();
-    this.http.get<any[]>(`http://localhost:3000/api/v1/jobs?q=${q}`).subscribe(data => this.jobOptions = data);
+    const query = event.target.value;
+    if (query.trim().length > 0) {
+      this.jobSearchMode = 'search';
+      this.searchSubject.next(query);
+    } else {
+      if (this.activeCategory) {
+        this.jobSearchMode = 'search';
+        this.jobTotalRecords = this.activeCategory.initialTitles.reduce((sum: number, item: any) => sum + item.records, 0);
+        this.jobSearchResults = [...this.activeCategory.initialTitles];
+      } else {
+        this.jobSearchMode = 'categories';
+      }
+    }
+  }
+
+  private executeJobSearch(query: string): void {
+    const surveyCode = this.chatService.surveyCode;
+    const title = this.activeCategory ? this.activeCategory.name : '';
+    
+    this.http.get<any>(`http://localhost:3000/api/v1/jobs?surveyCode=${surveyCode}&title=${encodeURIComponent(title)}&q=${encodeURIComponent(query)}`).subscribe(data => {
+      this.jobTotalRecords = data.totalRecords;
+      this.jobSearchResults = data.results;
+    });
   }
 
   public toggleCheckbox(value: string): void {
@@ -141,8 +183,28 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     this.chatService.sendMessage(selectedValues.join(', '));
   }
 
-  public submitJobSelection(jobTitle: string): void {
-    this.chatService.sendMessage(jobTitle);
+  public submitJobSelection(): void {
+    if (this.selectedJobTitle) {
+      this.chatService.sendMessage(this.selectedJobTitle);
+    }
+  }
+
+  public selectCategory(cat: any): void {
+    this.activeCategory = cat;
+    this.jobSearchMode = 'search';
+    this.searchFilterText = '';
+    this.selectedJobTitle = '';
+    
+    // Set initial data
+    this.jobTotalRecords = cat.initialTitles.reduce((sum: number, item: any) => sum + item.records, 0);
+    this.jobSearchResults = [...cat.initialTitles];
+  }
+
+  public goBackToCategories(): void {
+    this.jobSearchMode = 'categories';
+    this.searchFilterText = '';
+    this.activeCategory = null;
+    this.selectedJobTitle = '';
   }
 
   public submitLocationSelection(city: string): void {

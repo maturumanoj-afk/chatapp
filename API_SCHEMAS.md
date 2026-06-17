@@ -43,7 +43,7 @@ When the user sends a message or interacts with a UI component (like clicking a 
     "message": "Run compensation analysis",
     "role": "user",
     "context": {
-      "email": "myemail@email.com",
+      "globalProfileId": 410882,
       "smiCode": "SMI-001",
       "surveyCode": "SURV-2024"
     }
@@ -97,7 +97,7 @@ Content-Type: application/json
   "conversationId": "session_abc123",
   "context": {
     "threadId": "tr_881b7a69a23",
-    "email": "myemail@email.com",
+    "globalProfileId": 410882,
     "smiCode": "SMI-001",
     "surveyCode": "SURV-2024"
   }
@@ -134,7 +134,7 @@ data: {"status": "success", "reason": "stop"}
 
 ## Summary of Data Flow
 
-1. **UI** sends `message` + `context` (email, UI state).
+1. **UI** sends `message` + `context` (globalProfileId, UI state).
 2. **API** receives it, looks up `session_abc123` in its DB to find the `threadId`.
 3. **API** merges `threadId` into the `context` and POSTs to **Mastra**.
 4. **Mastra** processes the request using `threadId` for history, and returns SSE stream.

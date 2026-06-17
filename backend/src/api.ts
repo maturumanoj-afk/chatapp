@@ -6,6 +6,7 @@ import url from 'url';
 import { db } from './db';
 import { WSFrame, ChatMessage } from './types';
 import dotenv from 'dotenv';
+import Fuse from 'fuse.js';
 
 dotenv.config();
 
@@ -13,6 +14,25 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Request & Response Logging Middleware
+app.use((req, res, next) => {
+  if (!req.url.startsWith('/api')) return next();
+  
+  console.log(`\n=========================================`);
+  console.log(`[API REQUEST] ${req.method} ${req.url}`);
+  if (Object.keys(req.query).length > 0) console.log(`[API QUERY]`, req.query);
+  if (Object.keys(req.body).length > 0) console.log(`[API BODY]`, req.body);
+  
+  const originalJson = res.json;
+  res.json = function (body) {
+    console.log(`[API RESPONSE] ${res.statusCode}`);
+    console.log(`[API PAYLOAD]`, JSON.stringify(body, null, 2).substring(0, 500) + (JSON.stringify(body).length > 500 ? '\n... (truncated)' : ''));
+    console.log(`=========================================\n`);
+    return originalJson.call(this, body);
+  };
+  
+  next();
+});
 const PORT = process.env.PORT || 3000;
 const MASTRA_URL = `http://localhost:${process.env.MASTRA_PORT || 3001}/stream`;
 
@@ -28,18 +48,137 @@ app.get('/api/v1/analysis/:id', (req, res) => {
   res.json(data);
 });
 
+// Mock DB matching the MongoDB Schema for jobs
+const MOCK_JOB_HIERARCHY = {
+  families: [
+    {
+      id: "AFS",
+      name: "Administration, Facilities & Secretarial",
+      subFamilies: [
+        {
+          id: "01",
+          name: "Administration & Secretarial",
+          specializations: [
+            { id: "021", name: "Executive Secretary/Executive Assistant", sampleSize: { incs: 261 } },
+            { id: "022", name: "Administrative Support", sampleSize: { incs: 150 } }
+          ]
+        },
+        {
+          id: "02",
+          name: "Facilities Management",
+          specializations: [
+            { id: "031", name: "Facilities Operations", sampleSize: { incs: 80 } },
+            { id: "032", name: "Workplace Services", sampleSize: { incs: 40 } }
+          ]
+        }
+      ]
+    },
+    {
+      id: "IT",
+      name: "Engineering & IT",
+      subFamilies: [
+        {
+          id: "10",
+          name: "Software Engineering",
+          specializations: [
+            { id: "101", name: "Application Development & Maintenance", sampleSize: { incs: 140 } },
+            { id: "102", name: "Mobile & Web Application Development", sampleSize: { incs: 85 } },
+            { id: "103", name: "Development Engineering - Sp 1", sampleSize: { incs: 42 } },
+            { id: "104", name: "Development Engineering - Sp 2", sampleSize: { incs: 38 } },
+            { id: "105", name: "IT Software Development & Operations (DevOps)", sampleSize: { incs: 50 } }
+          ]
+        },
+        {
+          id: "11",
+          name: "Research & Development",
+          specializations: [
+            { id: "111", name: "AI & Machine Learning Research", sampleSize: { incs: 25 } },
+            { id: "112", name: "Backend Systems Engineering", sampleSize: { incs: 60 } },
+            { id: "113", name: "Frontend Interface Engineering", sampleSize: { incs: 70 } },
+            { id: "114", name: "Research & Development", sampleSize: { incs: 90 } }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+// Flatten specializations for fuse.js searching
+const FLATTENED_SPECIALIZATIONS: any[] = [];
+MOCK_JOB_HIERARCHY.families.forEach(f => {
+  f.subFamilies.forEach(sf => {
+    sf.specializations.forEach(sp => {
+      FLATTENED_SPECIALIZATIONS.push({
+        id: sp.id,
+        title: sp.name,
+        records: sp.sampleSize.incs,
+        type: 'Specialization'
+      });
+    });
+  });
+});
+
+const fuse = new Fuse(FLATTENED_SPECIALIZATIONS, {
+  keys: ['title'],
+  threshold: 0.3, // Fuzzy matching threshold
+  includeScore: true
+});
+
 // REST Endpoints for UI Components
+app.get('/api/v1/jobs/hierarchy', (req, res) => {
+  const surveyCode = req.query.surveyCode as string;
+  console.log(`[Mock API] Fetching hierarchy for survey: ${surveyCode}`);
+  res.json({
+    categories: [
+      {
+        name: "Job Family",
+        initialTitles: [
+          { title: "Administration, Facilities & Secretarial", records: 450 },
+          { title: "Engineering & Science", records: 820 },
+          { title: "Finance & Accounting", records: 310 }
+        ]
+      },
+      {
+        name: "Sub-Family",
+        initialTitles: [
+          { title: "Software Engineering", records: 250 },
+          { title: "Facilities Management", records: 120 },
+          { title: "Tax & Treasury", records: 80 }
+        ]
+      },
+      {
+        name: "Specialization",
+        initialTitles: [
+          { title: "Application Development & Maintenance", records: 140 },
+          { title: "AI & Machine Learning Research", records: 25 },
+          { title: "Backend Systems Engineering", records: 60 }
+        ]
+      },
+      { name: "Career Stream", initialTitles: [] },
+      { name: "Career Level", initialTitles: [] },
+      { name: "Job Title", initialTitles: [] }
+    ]
+  });
+});
+
 app.get('/api/v1/jobs', (req, res) => {
   const query = (req.query.q as string || '').toLowerCase();
-  const allJobs = [
-    { title: 'Application Development & Maintenance', type: 'Specialization' },
-    { title: 'Development Engineering - Sp 1', type: 'Specialization' },
-    { title: 'Development Engineering - Sp 2', type: 'Specialization' },
-    { title: 'IT Software Development & Operations (DevOps)', type: 'Specialization' },
-    { title: 'Research & Development', type: 'Sub Family' }
-  ];
-  const filtered = query ? allJobs.filter(j => j.title.toLowerCase().includes(query)) : allJobs;
-  res.json(filtered);
+  const surveyCode = req.query.surveyCode as string;
+  const title = req.query.title as string;
+  
+  console.log(`[Mock API] Searching jobs - Query: "${query}", Title: "${title}", Survey: "${surveyCode}"`);
+  
+  if (!query) {
+    const totalRecords = FLATTENED_SPECIALIZATIONS.reduce((sum, item) => sum + item.records, 0);
+    res.json({ totalRecords, query, results: FLATTENED_SPECIALIZATIONS });
+    return;
+  }
+
+  const searchResults = fuse.search(query);
+  const matchedItems = searchResults.map(r => r.item);
+  const totalRecords = matchedItems.reduce((sum, item) => sum + item.records, 0);
+
+  res.json({ totalRecords, query, results: matchedItems });
 });
 
 app.get('/api/v1/locations', (req, res) => {

@@ -22,7 +22,15 @@ The project is structured as a monorepo containing two main parts:
 ## Communication & Schemas
 
 The entire flow relies on a strict payload structure designed to seamlessly pass context, thread IDs, and UI component instructions. 
-For a detailed breakdown of the request/response structures and the SSE event streaming formats, see [API_SCHEMAS.md](./API_SCHEMAS.md).
+
+For detailed breakdowns, reference the following documentation files:
+- **[API_SCHEMAS.md](./API_SCHEMAS.md)**: Unified JSON payload schemas for UI <-> API <-> Mastra communication.
+- **[mastra_stream_api.md](./mastra_stream_api.md)**: Specifications for the Server-Sent Events (SSE) streaming endpoint.
+- **[websocket_chat_api.md](./websocket_chat_api.md)**: Specifications for the active WebSocket frame structures.
+- **[implementation_plan_api's.md](./implementation_plan_api's.md)**: Specifications for the Job Search REST API (Hydration & Fuzzy Search).
+
+> [!TIP]
+> **Debugging:** The Node.js API Gateway features a custom logging middleware. While running `npm run start`, it will beautifully print all incoming HTTP requests, Query parameters, and JSON payloads (truncated to 500 characters) directly in your terminal.
 
 ## Running the Application Locally
 

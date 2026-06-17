@@ -34,6 +34,8 @@ export class ChatService {
   private wsUrl = 'ws://localhost:3000/api/v1/chat';
   private apiUrl = 'http://localhost:3000/api/v1';
 
+  public get surveyCode(): string { return 'SURV-2024'; }
+
   private messagesSubject = new BehaviorSubject<ChatMessage[]>([]);
   public messages$: Observable<ChatMessage[]> = this.messagesSubject.asObservable();
 
@@ -265,7 +267,7 @@ export class ChatService {
         role: 'user',
         conversationId: sessionId,
         context: {
-          email: 'myemail@email.com',
+          globalProfileId: 410882,
           smiCode: 'SMI-001',
           surveyCode: 'SURV-2024'
         }
@@ -298,7 +300,7 @@ export class ChatService {
         role: 'user',
         conversationId: sessionId,
         context: {
-          email: 'myemail@email.com',
+          globalProfileId: 410882,
           smiCode: 'SMI-001',
           surveyCode: 'SURV-2024'
         }
