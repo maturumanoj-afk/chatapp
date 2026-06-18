@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface ChatMessage {
   id: string;
@@ -31,8 +32,8 @@ export interface WSFrame {
 })
 export class ChatService {
   private socket: WebSocket | null = null;
-  private wsUrl = 'ws://localhost:3000/api/v1/chat';
-  private apiUrl = 'http://localhost:3000/api/v1';
+  private wsUrl = environment.wsUrl;
+  private apiUrl = environment.apiUrl;
 
   public get surveyCode(): string { return 'SURV-2024'; }
 

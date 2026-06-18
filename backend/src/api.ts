@@ -34,7 +34,10 @@ app.use((req, res, next) => {
   next();
 });
 const PORT = process.env.PORT || 3000;
-const MASTRA_URL = `http://localhost:${process.env.MASTRA_PORT || 3001}/stream`;
+const API_HOST = process.env.API_HOST || 'http://localhost';
+const MASTRA_PORT = process.env.MASTRA_PORT || 3001;
+const MASTRA_HOST = process.env.MASTRA_HOST || 'http://localhost';
+const MASTRA_URL = `${MASTRA_HOST}:${MASTRA_PORT}/stream`;
 
 // REST Endpoint: Get analysis data
 app.get('/api/v1/analysis/:id', (req, res) => {
@@ -442,5 +445,5 @@ function monitorAnalysisJob(jobId: string, ws: WebSocket) {
 }
 
 server.listen(PORT, () => {
-  console.log(`[API Gateway] Server running on http://localhost:${PORT}`);
+  console.log(`[API Gateway] Server running on ${API_HOST}:${PORT}`);
 });

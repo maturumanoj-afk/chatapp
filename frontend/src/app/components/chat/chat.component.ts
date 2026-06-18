@@ -5,6 +5,7 @@ import { ChatService, ChatMessage } from '../../services/chat.service';
 import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-chat',
@@ -87,14 +88,14 @@ export class ChatComponent implements OnInit, AfterViewChecked {
           this.jobSearchMode = 'categories';
           this.searchFilterText = '';
           const surveyCode = this.chatService.surveyCode;
-          this.http.get<any>(`http://localhost:3000/api/v1/jobs/hierarchy?surveyCode=${surveyCode}`).subscribe(data => {
+          this.http.get<any>(`${environment.apiUrl}/jobs/hierarchy?surveyCode=${surveyCode}`).subscribe(data => {
             this.jobCategories = data.categories;
           });
         } else if (input.type === 'search-location') {
           this.locationQuery = '';
-          this.http.get<any[]>('http://localhost:3000/api/v1/locations').subscribe(data => this.locationOptions = data);
+          this.http.get<any[]>(`${environment.apiUrl}/locations`).subscribe(data => this.locationOptions = data);
         } else if (input.type === 'select-industry') {
-          this.http.get<any>('http://localhost:3000/api/v1/sectors').subscribe(data => {
+          this.http.get<any>(`${environment.apiUrl}/sectors`).subscribe(data => {
             this.sectorData = data;
             this.activeSectorTab = 'superSector';
             this.checkboxSelections = {};
@@ -142,9 +143,9 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   }
 
   // Filtered search options
-  public filterLocations(): void {
-    const q = this.locationQuery.toLowerCase();
-    this.http.get<any[]>(`http://localhost:3000/api/v1/locations?q=${q}`).subscribe(data => this.locationOptions = data);
+  public filterLocations(event: any): void {
+    const q = event.target.value.toLowerCase();
+    this.http.get<any[]>(`${environment.apiUrl}/locations?q=${q}`).subscribe(data => this.locationOptions = data);
   }
 
   public filterJobs(event: any): void {
@@ -167,7 +168,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     const surveyCode = this.chatService.surveyCode;
     const title = this.activeCategory ? this.activeCategory.name : '';
     
-    this.http.get<any>(`http://localhost:3000/api/v1/jobs?surveyCode=${surveyCode}&title=${encodeURIComponent(title)}&q=${encodeURIComponent(query)}`).subscribe(data => {
+    this.http.get<any>(`${environment.apiUrl}/jobs?surveyCode=${surveyCode}&title=${encodeURIComponent(title)}&q=${encodeURIComponent(query)}`).subscribe(data => {
       this.jobTotalRecords = data.totalRecords;
       this.jobSearchResults = data.results;
     });
@@ -215,8 +216,11 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     this.chatService.sendMessage(`${this.rangeMin} - ${this.rangeMax}`);
   }
 
-  public exportData(analysisId: string): void {
-    window.open(`http://localhost:3000/api/v1/export/${analysisId}`, '_blank');
+  public viewAnalysisDetails(analysisId: string): void {
+    // In a real app, this would probably open a modal or route to a detailed view
+    // For this POC, we can simulate downloading or viewing the raw data
+    console.log(`User wants to view details for ${analysisId}`);
+    window.open(`${environment.apiUrl}/export/${analysisId}`, '_blank');
   }
 
   public resetSession(): void {

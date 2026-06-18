@@ -12,6 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.MASTRA_PORT || 3001;
+const MASTRA_HOST = process.env.MASTRA_HOST || 'http://localhost';
 
 // Define helper to write SSE lines
 function writeSSE(res: express.Response, type: string, payload: any) {
@@ -212,5 +213,5 @@ app.post('/stream', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[Mastra Agent] Service running on http://localhost:${PORT} (SSE Mock Mode: ${useMock})`);
+  console.log(`[Mastra Agent] Service running on ${MASTRA_HOST}:${PORT} (SSE Mock Mode: ${useMock})`);
 });
